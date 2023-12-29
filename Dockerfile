@@ -96,6 +96,6 @@ ENV LANG=C.UTF-8 \
 
 EXPOSE 3000 443
 
-COPY start.sh /start.sh
+COPY --chown=$USERNAME:$USERNAME start.sh /start.sh
 
 ENTRYPOINT ["/start.sh"]
