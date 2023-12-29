@@ -1,0 +1,62 @@
+name: Publish Docker Image
+
+on:
+  push:
+    branches: [master]
+  schedule:
+    - cron: "0 0 * * 0" # Every Sunday at 00:00 UTC
+
+concurrency:
+  group: publish-ci
+
+jobs:
+  publish-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⚙️ Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: "master"
+
+      - name: 📅 Get Timestamp
+        run: echo "TIMESTAMP=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
+
+      - name: 🌐 Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔧 Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏗️ Build with BuildX (and push -noslim)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/nginx-vscode-docker:main-noslim
+            ghcr.io/${{ github.repository_owner }}/nginx-vscode-docker:${{ env.TIMESTAMP }}-noslim
+          load: true # loads the images into the actions docker storage for slimming
+          cache-from: type=gha,mode=max
+          cache-to: type=gha,mode=max
+
+      - name: 🐳 Docker Slim Build
+        uses: kitabisa/docker-slim-action@v1
+        env:
+          DSLIM_INCLUDE_BIN: "/home/.openvscode-server/bin,/usr/lib/x86_64-linux-gnu/libutil.so.1"
+          DSLIM_INCLUDE_PATH: "/home/.openvscode-server"
+          DSLIM_INCLUDE_EXE: "git"
+          DSLIM_INCLUDE_SHELL: "true"
+        with:
+          target: "ghcr.io/${{ github.repository_owner }}/nginx-vscode-docker:main-noslim"
+          tag: |
+            ghcr.io/${{ github.repository_owner }}/nginx-vscode-docker:main
+            ghcr.io/${{ github.repository_owner }}/nginx-vscode-docker:${{ env.TIMESTAMP }}
+
+      - name: 📤 Push Slim Image to GitHub Registry
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/nginx-vscode-docker:main
+          docker push ghcr.io/${{ github.repository_owner }}/nginx-vscode-docker:${{ env.TIMESTAMP }}
