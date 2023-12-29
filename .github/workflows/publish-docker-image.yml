@@ -8,6 +8,7 @@ on:
 
 concurrency:
   group: publish-ci
+  cancel-in-progress: true
 
 jobs:
   publish-images:
@@ -52,7 +53,7 @@ jobs:
           DSLIM_INCLUDE_SHELL: "true"
         with:
           target: "ghcr.io/${{ github.repository_owner }}/nginx-vscode-docker:main-noslim"
-          tag: ghcr.io/${{ github.repository_owner }}/nginx-vscode-docker:main
+          tag: main
 
       - name: 📤 Push Images to GitHub Registry
         run: |
